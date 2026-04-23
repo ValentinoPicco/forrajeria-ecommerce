@@ -82,19 +82,42 @@ model Brand {
 
 model Product {
   id          String   @id @default(cuid())
-  name        String   // Ej: "Alimento Adulto Mordida Pequeña"
+  name        String   // Ej: "Alimento Gatos Castrados"
   description String?  @db.Text
   
-  // Relaciones normalizadas
   brandId     String
   brand       Brand    @relation(fields: [brandId], references: [id])
   categoryId  String
   category    Category @relation(fields: [categoryId], references: [id])
   
+  // Relación con la nueva tabla de imágenes
+  images      ProductImage[]
+  
   variants    ProductVariant[]
   
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+}
+
+model ProductImage {
+  id        String   @id @default(cuid())
+  
+  // URL completa para mostrar la imagen directamente
+  url       String   
+  
+  // El public_id de Cloudinary (fundamental para borrar la imagen del servidor)
+  publicId  String   
+  
+  // Texto alternativo para accesibilidad y SEO de la forrajería
+  altText   String?  
+  
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  
+  // Define si es la foto que aparece en el catálogo principal
+  isMain    Boolean  @default(false)
+  
+  createdAt DateTime @default(now())
 }
 
 // La variante maneja la presentación, el stock y el precio
