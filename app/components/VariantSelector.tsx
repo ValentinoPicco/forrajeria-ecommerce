@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { ShoppingCart, Package } from "lucide-react";
+import { ShoppingCart, Package, Loader2 } from "lucide-react";
 import FavoriteButton from "./FavoriteButton";
+import { useCart } from "../context/CartContext";
+import { useSession } from "next-auth/react";
 
 interface Variant {
   id: string;
@@ -17,13 +19,32 @@ interface VariantSelectorProps {
 }
 
 export default function VariantSelector({ variants }: VariantSelectorProps) {
+  const { addToCart } = useCart();
+  const { status } = useSession();
+  
   const [selectedId, setSelectedId] = useState<string | null>(
     variants.find((v) => v.stock > 0)?.id ?? variants[0]?.id ?? null
   );
+  const [isAdding, setIsAdding] = useState(false);
+  const [showTooltip, setShowTooltip] = useState(false);
 
   const selected = variants.find((v) => v.id === selectedId) ?? null;
   const inStock = selected ? selected.stock > 0 : false;
   const totalStock = variants.reduce((acc, v) => acc + v.stock, 0);
+
+  const handleAddToCart = async () => {
+    if (status !== "authenticated") {
+      setShowTooltip(true);
+      setTimeout(() => setShowTooltip(false), 2500);
+      return;
+    }
+
+    if (!selectedId || !inStock) return;
+
+    setIsAdding(true);
+    await addToCart(selectedId, 1);
+    setIsAdding(false);
+  };
 
   return (
     <div className="flex flex-col gap-6">
@@ -80,17 +101,26 @@ export default function VariantSelector({ variants }: VariantSelectorProps) {
       )}
 
       {/* CTA Buttons */}
-      <div className="flex gap-3 pt-2">
+      <div className="flex gap-3 pt-2 relative">
         <button
-          disabled={!inStock}
+          onClick={handleAddToCart}
+          disabled={!inStock || isAdding}
           className="flex-1 flex items-center justify-center gap-2.5 py-4 px-6 bg-primary text-on-primary rounded-2xl font-bold text-base shadow-lg shadow-primary/25 hover:bg-primary/90 transition-all duration-200 hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 cursor-pointer"
         >
-          <ShoppingCart className="w-5 h-5" />
+          {isAdding ? <Loader2 className="w-5 h-5 animate-spin" /> : <ShoppingCart className="w-5 h-5" />}
           {inStock ? "Agregar al carrito" : "Sin stock"}
         </button>
         {selectedId && (
           <div className="flex justify-end shrink-0">
             <FavoriteButton variantId={selectedId} size="md" />
+          </div>
+        )}
+        
+        {/* Tooltip "Iniciá sesión" */}
+        {showTooltip && (
+          <div className="absolute bottom-full mb-3 left-1/4 whitespace-nowrap bg-on-surface text-surface text-xs font-bold px-3 py-2 rounded-xl shadow-xl z-[100] animate-in fade-in slide-in-from-bottom-1 duration-200">
+            Iniciá sesión para usar el carrito
+            <div className="absolute top-full left-1/2 -translate-x-1/2 border-[6px] border-transparent border-t-on-surface" />
           </div>
         )}
       </div>

@@ -1,7 +1,10 @@
 "use client";
 
-import { ShoppingCart, Tractor } from "lucide-react";
+import { ShoppingCart, Tractor, Loader2 } from "lucide-react";
 import FavoriteButton from "./FavoriteButton";
+import { useCart } from "../context/CartContext";
+import { useState } from "react";
+import { useSession } from "next-auth/react";
 
 interface ProductCardProps {
   id: string;
@@ -24,6 +27,28 @@ export default function ProductCard({
   mainImageAlt,
   defaultVariantId,
 }: ProductCardProps) {
+  const { addToCart } = useCart();
+  const { status } = useSession();
+  const [isAdding, setIsAdding] = useState(false);
+  const [showTooltip, setShowTooltip] = useState(false);
+
+  const handleAddToCart = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (status !== "authenticated") {
+      setShowTooltip(true);
+      setTimeout(() => setShowTooltip(false), 2500);
+      return;
+    }
+
+    if (!defaultVariantId) return;
+
+    setIsAdding(true);
+    await addToCart(defaultVariantId, 1);
+    setIsAdding(false);
+  };
+
   return (
     <div className="group relative bg-surface-container-low rounded-2xl transition-all duration-500 hover:-translate-y-1 block h-full shadow-sm hover:shadow-md">
       {/* Main Link Overlay */}
@@ -72,16 +97,22 @@ export default function ProductCard({
           <div className="flex justify-between items-center mt-auto">
             <span className="text-2xl font-black text-primary">{basePrice}</span>
             {/* Cart Button - pointer-events-auto to enable interaction */}
-            <div className="pointer-events-auto">
+            <div className="pointer-events-auto relative">
               <button
-                onClick={(e) => {
-                  e.preventDefault();
-                  // TODO: agregar al carrito
-                }}
-                className="p-3 bg-primary text-on-primary rounded-xl shadow-lg shadow-primary/20 hover:bg-primary/90 transition-colors cursor-pointer relative z-20"
+                onClick={handleAddToCart}
+                disabled={isAdding || !defaultVariantId}
+                className="p-3 bg-primary text-on-primary rounded-xl shadow-lg shadow-primary/20 hover:bg-primary/90 transition-colors cursor-pointer relative z-20 disabled:opacity-50"
               >
-                <ShoppingCart className="w-5 h-5" />
+                {isAdding ? <Loader2 className="w-5 h-5 animate-spin" /> : <ShoppingCart className="w-5 h-5" />}
               </button>
+              
+              {/* Tooltip "Iniciá sesión" */}
+              {showTooltip && (
+                <div className="absolute bottom-full mb-3 right-0 whitespace-nowrap bg-on-surface text-surface text-[10px] sm:text-xs font-bold px-3 py-2 rounded-xl shadow-xl z-[100] animate-in fade-in slide-in-from-bottom-1 duration-200">
+                  Iniciá sesión para usar el carrito
+                  <div className="absolute top-full right-4 border-[6px] border-transparent border-t-on-surface" />
+                </div>
+              )}
             </div>
           </div>
         </div>

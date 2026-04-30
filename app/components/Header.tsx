@@ -3,6 +3,7 @@ import { authOptions } from "../api/auth/[...nextauth]/route";
 import { Search, ShoppingCart, Shield, Heart } from "lucide-react";
 import Link from "next/link";
 import AuthButtons from "./AuthButtons";
+import CartIcon from "./CartIcon";
 
 export default async function Header() {
   const session = await getServerSession(authOptions);
@@ -50,9 +51,7 @@ export default async function Header() {
             <Heart className="w-6 h-6" />
           </Link>
 
-          <button className="p-2 text-primary dark:text-[#c5d39c] hover:bg-primary-container/10 rounded-full transition-colors active:scale-95 cursor-pointer">
-            <ShoppingCart className="w-6 h-6" />
-          </button>
+          <CartIcon />
 
           {/* Componente Client Modal con estado de Autenticación */}
           <AuthButtons session={session} />

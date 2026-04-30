@@ -49,6 +49,7 @@ model User {
   sessions      Session[]
   orders        Order[]   // Relación con sus compras
   wishlistItems Wishlist[]
+  cart          Cart?     // Relación 1-1 con el carrito
 }
 
 model VerificationToken {
@@ -145,6 +146,7 @@ model ProductVariant {
   
   orderItems  OrderItem[]
   wishlistItems Wishlist[]
+  cartItems   CartItem[]
 }
 
 // ==========================================
@@ -183,4 +185,35 @@ enum OrderStatus {
   SHIPPED
   DELIVERED
   CANCELLED
+}
+
+// ==========================================
+// 4. CARRITO DE COMPRAS
+// ==========================================
+
+model Cart {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  items     CartItem[]
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model CartItem {
+  id        String   @id @default(cuid())
+  cartId    String
+  cart      Cart     @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  
+  variantId String
+  variant   ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  
+  quantity  Int      @default(1)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([cartId, variantId]) // Evita tener dos líneas con la misma variante en el mismo carrito, se suma la cantidad
 }
