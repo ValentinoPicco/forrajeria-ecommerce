@@ -2,13 +2,12 @@
 import {
   LayoutGrid,
   List,
-  Heart,
   ChevronLeft,
   ChevronRight,
   Tractor,
-  ShoppingCart
 } from 'lucide-react';
 import Header from "./components/Header";
+import ProductCard from "./components/ProductCard";
 
 import { prisma } from "@/lib/prisma";
 import StoreFilter from "./components/StoreFilter";
@@ -94,44 +93,20 @@ export default async function Home(props: { searchParams: Promise<{ category?: s
                     {products.map((product) => {
                       const mainImage = product.images.find(i => i.isMain) || product.images[0];
                       const basePrice = product.variants.length > 0 ? `$${product.variants[0].price.toString()}` : 'No def.';
-                      
+
                       return (
-                        <div key={product.id} className="group relative bg-surface-container-low rounded-2xl overflow-hidden hover:bg-surface-container-lowest transition-all duration-500 hover:-translate-y-1">
-                          <div className="aspect-square overflow-hidden bg-surface-container relative flex items-center justify-center">
-                            {mainImage ? (
-                              // eslint-disable-next-line @next/next/no-img-element
-                              <img
-                                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 absolute inset-0"
-                                alt={product.name}
-                                src={mainImage.url}
-                                referrerPolicy="no-referrer"
-                              />
-                            ) : (
-                              <Tractor className="w-12 h-12 text-outline/30" />
-                            )}
-                          </div>
-                          <div className="p-6">
-                            <div className="flex justify-between items-start mb-2">
-                              <span className="px-2 py-1 bg-secondary-container text-on-secondary-container text-[10px] font-bold uppercase tracking-widest rounded-full">
-                                {product.category?.name || 'Varios'}
-                              </span>
-                              <Heart className="w-5 h-5 text-outline hover:text-primary cursor-pointer transition-colors" />
-                            </div>
-                            <h3 className="text-xl font-bold text-on-surface mb-2 group-hover:text-primary transition-colors cursor-pointer">
-                              {product.name}
-                            </h3>
-                            <p className="text-on-surface-variant text-sm mb-6 line-clamp-2">
-                              {product.description || 'Sin descripción disponible para este producto.'}
-                            </p>
-                            <div className="flex justify-between items-center">
-                              <span className="text-2xl font-black text-primary">{basePrice}</span>
-                              <button className="p-3 bg-primary text-on-primary rounded-xl shadow-lg shadow-primary/20 hover:bg-primary/90 transition-colors cursor-pointer">
-                                <ShoppingCart className="w-5 h-5" />
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      )
+                        <ProductCard
+                          key={product.id}
+                          id={product.id}
+                          name={product.name}
+                          description={product.description}
+                          categoryName={product.category?.name ?? null}
+                          basePrice={basePrice}
+                          mainImageUrl={mainImage?.url ?? null}
+                          mainImageAlt={mainImage?.altText ?? null}
+                          defaultVariantId={product.variants[0]?.id}
+                        />
+                      );
                     })}
 
                     {/* Special CTA Card (Asymmetric Bento Element) */}

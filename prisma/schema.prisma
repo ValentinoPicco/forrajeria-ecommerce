@@ -48,6 +48,7 @@ model User {
   accounts      Account[]
   sessions      Session[]
   orders        Order[]   // Relación con sus compras
+  wishlistItems Wishlist[]
 }
 
 model VerificationToken {
@@ -99,6 +100,17 @@ model Product {
   updatedAt   DateTime @updatedAt
 }
 
+model Wishlist {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  variantId String
+  variant   ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, variantId]) // Un usuario no puede favoritear la misma variante dos veces
+}
+
 model ProductImage {
   id        String   @id @default(cuid())
   
@@ -132,6 +144,7 @@ model ProductVariant {
   stock       Int      @default(0) // Stock específico de esta presentación
   
   orderItems  OrderItem[]
+  wishlistItems Wishlist[]
 }
 
 // ==========================================

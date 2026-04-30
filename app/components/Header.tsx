@@ -1,6 +1,6 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "../api/auth/[...nextauth]/route";
-import { Search, ShoppingCart, Shield } from "lucide-react";
+import { Search, ShoppingCart, Shield, Heart } from "lucide-react";
 import Link from "next/link";
 import AuthButtons from "./AuthButtons";
 
@@ -41,6 +41,14 @@ export default async function Header() {
               <span className="hidden md:block text-sm font-bold">Admin</span>
             </Link>
           )}
+
+          <Link 
+            href="/favoritos"
+            className="p-2 text-primary dark:text-[#c5d39c] hover:bg-primary-container/10 rounded-full transition-colors active:scale-95 cursor-pointer"
+            title="Mis Favoritos"
+          >
+            <Heart className="w-6 h-6" />
+          </Link>
 
           <button className="p-2 text-primary dark:text-[#c5d39c] hover:bg-primary-container/10 rounded-full transition-colors active:scale-95 cursor-pointer">
             <ShoppingCart className="w-6 h-6" />
