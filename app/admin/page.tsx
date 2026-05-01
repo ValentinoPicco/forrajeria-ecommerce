@@ -1,7 +1,8 @@
-import { Package, Pencil, Trash2 } from 'lucide-react';
+import { Package } from 'lucide-react';
 import { prisma } from "@/lib/prisma";
 import CategoryManager from "./components/CategoryManager";
 import ProductModal from "./components/ProductModal";
+import ProductActions from "./components/ProductActions";
 
 export default async function AdminDashboard(props: { searchParams: Promise<{ category?: string }> }) {
   const resolvedParams = await props.searchParams;
@@ -118,28 +119,19 @@ export default async function AdminDashboard(props: { searchParams: Promise<{ ca
                         <p className="font-bold text-primary">${variant.price.toString()}</p>
                       </td>
                       <td className="px-6 py-4">
-                        <div className="flex justify-center gap-2">
-                          <div className="relative group flex items-center justify-center">
-                            <button className="p-2 text-primary hover:bg-primary/10 rounded-lg transition-colors cursor-pointer">
-                              <Pencil className="w-5 h-5" />
-                            </button>
-                            <div className="absolute bottom-full right-0 mb-1 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
-                              <span className="bg-on-surface text-surface text-xs font-bold px-2.5 py-1 rounded-md shadow-lg whitespace-nowrap relative after:absolute after:top-full after:right-3 after:border-4 after:border-transparent after:border-t-on-surface">
-                                Editar Producto
-                              </span>
-                            </div>
-                          </div>
-                          <div className="relative group flex items-center justify-center">
-                            <button className="p-2 text-red-500 hover:bg-surface-container-high rounded-lg transition-colors cursor-pointer">
-                              <Trash2 className="w-5 h-5" />
-                            </button>
-                            <div className="absolute bottom-full right-0 mb-1 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
-                              <span className="bg-on-surface text-surface text-xs font-bold px-2.5 py-1 rounded-md shadow-lg whitespace-nowrap relative after:absolute after:top-full after:right-3 after:border-4 after:border-transparent after:border-t-on-surface">
-                                Eliminar Producto
-                              </span>
-                            </div>
-                          </div>
-                        </div>
+                        <ProductActions 
+                          product={{
+                            ...product,
+                            variants: product.variants.map(v => ({
+                              ...v,
+                              price: v.price.toString()
+                            }))
+                          }}
+                          variantId={variant.id}
+                          variantName={variant.name}
+                          categories={categories}
+                          initialBrands={brands}
+                        />
                       </td>
                     </tr>
                   ));

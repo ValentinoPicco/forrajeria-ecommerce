@@ -1,14 +1,34 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, X, UploadCloud, Image as ImageIcon, Trash2 } from "lucide-react";
+import { Plus, X, UploadCloud, Image as ImageIcon, Trash2, Pencil } from "lucide-react";
 
 type Category = { id: string; name: string };
 type Brand = { id: string; name: string };
-type Variant = { name: string; sku: string; price: string; stock: string };
+type Variant = { id?: string; name: string; sku: string; price: string; stock: string };
 
-export default function ProductModal({ categories, initialBrands }: { categories: Category[], initialBrands: Brand[] }) {
+type ProductToEdit = {
+  id: string;
+  name: string;
+  description?: string | null;
+  categoryId?: string | null;
+  brandId?: string | null;
+  images: { url: string; publicId: string; isMain: boolean }[];
+  variants: { id: string; name: string; sku: string | null; price: any; stock: number }[];
+};
+
+export default function ProductModal({ 
+  categories, 
+  initialBrands,
+  productToEdit,
+  triggerType = "button"
+}: { 
+  categories: Category[], 
+  initialBrands: Brand[],
+  productToEdit?: ProductToEdit,
+  triggerType?: "button" | "edit-icon"
+}) {
   const router = useRouter();
 
   const [isOpen, setIsOpen] = useState(false);
@@ -27,6 +47,8 @@ export default function ProductModal({ categories, initialBrands }: { categories
   ]);
 
   const [imageFile, setImageFile] = useState<File | null>(null);
+  const [existingImageUrl, setExistingImageUrl] = useState<string | null>(null);
+  const [existingImagePublicId, setExistingImagePublicId] = useState<string | null>(null);
   const [dragActive, setDragActive] = useState(false);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -34,7 +56,32 @@ export default function ProductModal({ categories, initialBrands }: { categories
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Precargar datos si estamos en modo edición
+  useEffect(() => {
+    if (productToEdit) {
+      setProductName(productToEdit.name);
+      setProductDesc(productToEdit.description || "");
+      setCategoryId(productToEdit.categoryId || "");
+      setBrandId(productToEdit.brandId || "");
+      setVariants(
+        productToEdit.variants.map((v) => ({
+          id: v.id,
+          name: v.name,
+          sku: v.sku || "",
+          price: v.price.toString(),
+          stock: v.stock.toString(),
+        }))
+      );
+      const mainImage = productToEdit.images.find((i) => i.isMain) || productToEdit.images[0];
+      if (mainImage) {
+        setExistingImageUrl(mainImage.url);
+        setExistingImagePublicId(mainImage.publicId);
+      }
+    }
+  }, [productToEdit]);
+
   const resetForm = () => {
+    if (productToEdit) return; // En modo edición no limpiamos los campos, simplemente cerramos
     setProductName("");
     setProductDesc("");
     setCategoryId("");
@@ -43,6 +90,8 @@ export default function ProductModal({ categories, initialBrands }: { categories
     setNewBrandName("");
     setVariants([{ name: "", sku: "", price: "", stock: "" }]);
     setImageFile(null);
+    setExistingImageUrl(null);
+    setExistingImagePublicId(null);
     setErrorMsg(null);
   };
 
@@ -100,7 +149,7 @@ export default function ProductModal({ categories, initialBrands }: { categories
     e.preventDefault();
     setErrorMsg(null);
 
-    if (!imageFile) {
+    if (!imageFile && !existingImageUrl) {
       return setErrorMsg("Debes adjuntar o arrastrar al menos una imagen (Portada).");
     }
     if (!categoryId) {
@@ -141,18 +190,26 @@ export default function ProductModal({ categories, initialBrands }: { categories
         setBrands(prev => [...prev, brandData]);
       }
 
-      // 2. Subir Imagen cruda a Cloudinary para transformarla localmente a webp
-      const formData = new FormData();
-      formData.append("file", imageFile);
+      // 2. Subir Imagen cruda a Cloudinary (si hay una nueva)
+      let finalImageUrl = existingImageUrl;
+      let finalImagePublicId = existingImagePublicId;
 
-      const uploadRes = await fetch("/api/upload", {
-        method: "POST",
-        body: formData, // No lleva Application/JSON porque enviamos BLOB
-      });
-      const uploadData = await uploadRes.json();
-      if (!uploadRes.ok) throw new Error(uploadData.error || "Error subiendo la imagen a la nube.");
+      if (imageFile) {
+        const formData = new FormData();
+        formData.append("file", imageFile);
 
-      // 3. Crear el Producto Integral
+        const uploadRes = await fetch("/api/upload", {
+          method: "POST",
+          body: formData,
+        });
+        const uploadData = await uploadRes.json();
+        if (!uploadRes.ok) throw new Error(uploadData.error || "Error subiendo la imagen a la nube.");
+        
+        finalImageUrl = uploadData.url;
+        finalImagePublicId = uploadData.publicId;
+      }
+
+      // 3. Crear o Actualizar el Producto Integral
       const formattedVariants = variants.map(v => ({
         name: v.name,
         sku: v.sku || null,
@@ -166,22 +223,25 @@ export default function ProductModal({ categories, initialBrands }: { categories
         brandId: finalBrandId,
         categoryId: finalCategoryId,
         images: [{
-          url: uploadData.url,
-          publicId: uploadData.publicId,
+          url: finalImageUrl,
+          publicId: finalImagePublicId,
           altText: productName,
           isMain: true
         }],
         variants: formattedVariants
       };
 
-      const productRes = await fetch("/api/products", {
-        method: "POST",
+      const url = productToEdit ? `/api/products/${productToEdit.id}` : "/api/products";
+      const method = productToEdit ? "PUT" : "POST";
+
+      const productRes = await fetch(url, {
+        method: method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(productPayload)
       });
 
       const productData = await productRes.json();
-      if (!productRes.ok) throw new Error(productData.error || "Error insertando el producto en base de datos.");
+      if (!productRes.ok) throw new Error(productData.error || `Error ${productToEdit ? 'actualizando' : 'insertando'} el producto.`);
 
       // Éxito absoluto.
       closeForm();
@@ -196,13 +256,29 @@ export default function ProductModal({ categories, initialBrands }: { categories
 
   return (
     <>
-      <button
-        onClick={openForm}
-        className="bg-primary text-on-primary flex items-center gap-2 px-6 py-3 rounded-xl font-bold hover:shadow-xl hover:shadow-primary/20 transition-all active:scale-95 cursor-pointer"
-      >
-        <Plus className="w-5 h-5" strokeWidth={3} />
-        Añadir Nuevo Producto
-      </button>
+      {triggerType === "button" ? (
+        <button
+          onClick={openForm}
+          className="bg-primary text-on-primary flex items-center gap-2 px-6 py-3 rounded-xl font-bold hover:shadow-xl hover:shadow-primary/20 transition-all active:scale-95 cursor-pointer"
+        >
+          <Plus className="w-5 h-5" strokeWidth={3} />
+          Añadir Nuevo Producto
+        </button>
+      ) : (
+        <div className="relative group flex items-center justify-center">
+          <button 
+            onClick={openForm}
+            className="p-2 text-primary hover:bg-primary/10 rounded-lg transition-colors cursor-pointer"
+          >
+            <Pencil className="w-5 h-5" />
+          </button>
+          <div className="absolute bottom-full right-0 mb-1 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
+            <span className="bg-on-surface text-surface text-xs font-bold px-2.5 py-1 rounded-md shadow-lg whitespace-nowrap relative after:absolute after:top-full after:right-3 after:border-4 after:border-transparent after:border-t-on-surface">
+              Editar Producto
+            </span>
+          </div>
+        </div>
+      )}
 
       {isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
@@ -216,7 +292,9 @@ export default function ProductModal({ categories, initialBrands }: { categories
               <X className="w-6 h-6" />
             </button>
 
-            <h2 className="text-3xl font-extrabold text-primary mb-2 tracking-tight">Alta de Producto</h2>
+            <h2 className="text-3xl font-extrabold text-primary mb-2 tracking-tight">
+              {productToEdit ? 'Editar Producto' : 'Alta de Producto'}
+            </h2>
             <p className="text-on-surface-variant text-sm mb-8 font-medium">Sube fotografías de buena luz y define al menos un nivel de presentación de stock (variante).</p>
 
             {errorMsg && (
@@ -257,6 +335,16 @@ export default function ProductModal({ categories, initialBrands }: { categories
                         <span className="font-bold text-sm text-primary max-w-[80%] truncate">{imageFile.name}</span>
                         <span className="text-xs text-on-surface-variant mt-1">{(imageFile.size / 1024 / 1024).toFixed(2)} MB</span>
                         <p className="text-xs text-primary/70 mt-4 opacity-70">(Clic para reemplazar)</p>
+                      </div>
+                    ) : existingImageUrl ? (
+                      <div className="absolute inset-0 bg-surface flex flex-col items-center justify-center">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={existingImageUrl} alt="Preview" className="w-full h-full object-cover opacity-60" />
+                        <div className="absolute inset-0 flex flex-col items-center justify-center text-white drop-shadow-md">
+                          <ImageIcon className="w-8 h-8 mb-2" />
+                          <span className="font-bold text-sm">Imagen Actual</span>
+                          <p className="text-xs mt-1">(Clic para reemplazar)</p>
+                        </div>
                       </div>
                     ) : (
                       <>

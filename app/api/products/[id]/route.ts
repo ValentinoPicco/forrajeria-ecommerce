@@ -7,7 +7,8 @@ export async function GET(
   context: any
 ) {
   try {
-    const { id } = context.params;
+    const params = await context.params;
+    const { id } = params;
 
     const product = await prisma.product.findUnique({
       where: { id },
@@ -39,7 +40,8 @@ export async function PUT(
   context: any
 ) {
   try {
-    const { id } = context.params;
+    const params = await context.params;
+    const { id } = params;
     const body = await request.json();
     const { name, description, brandId, categoryId, images, variants } = body;
 
@@ -89,7 +91,8 @@ export async function DELETE(
   context: any
 ) {
   try {
-    const { id } = context.params;
+    const params = await context.params;
+    const { id } = params;
 
     // Prisma se encarga de eliminar las Variantes e Imágenes gracias a al
     // onDelete: Cascade que configuramos en schema.prisma.

@@ -3,7 +3,8 @@ import { prisma } from "@/lib/prisma";
 
 export async function PUT(request: Request, context: any) {
   try {
-    const { id } = context.params;
+    const params = await context.params;
+    const { id } = params;
     const body = await request.json();
     const { name } = body;
 
@@ -49,7 +50,8 @@ export async function PUT(request: Request, context: any) {
 
 export async function DELETE(request: Request, context: any) {
   try {
-    const { id } = context.params;
+    const params = await context.params;
+    const { id } = params;
 
     // Verificar primero si hay productos usando esta categoría.
     // Esto corresponde a la "Opción A" del Plan de Implementación.
