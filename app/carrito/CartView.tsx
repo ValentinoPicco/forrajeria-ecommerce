@@ -1,23 +1,36 @@
 "use client";
 
 import { useCart } from "@/app/context/CartContext";
-import { Trash2, Plus, Minus, ShoppingBag } from "lucide-react";
+import { Trash2, Plus, Minus, ShoppingBag, CheckCircle } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useEffect, useState } from "react";
 
 export default function CartView() {
   const { status } = useSession();
   const router = useRouter();
-  const { cart, isLoading, updateQuantity, removeItem, subtotal, totalItems } = useCart();
+  const searchParams = useSearchParams();
+  const { cart, isLoading, updateQuantity, removeItem, subtotal, totalItems, clearCartLocal } = useCart();
   const [isCheckingOut, setIsCheckingOut] = useState(false);
+  const [paymentSuccess, setPaymentSuccess] = useState(false);
 
   useEffect(() => {
     if (status === "unauthenticated") {
       router.push("/");
     }
   }, [status, router]);
+
+  useEffect(() => {
+    // Si retornamos exitosamente de Mercado Pago
+    const mpStatus = searchParams.get('status');
+    if (mpStatus === 'success' || mpStatus === 'approved') {
+      setPaymentSuccess(true);
+      clearCartLocal();
+      // Opcional: limpiar la url sin recargar
+      window.history.replaceState(null, '', '/carrito');
+    }
+  }, [searchParams, clearCartLocal]);
 
   const handleCheckout = async () => {
     try {
@@ -52,6 +65,28 @@ export default function CartView() {
   }
 
   const items = cart?.items || [];
+
+  if (paymentSuccess) {
+    return (
+      <main className="grow max-w-7xl mx-auto px-4 sm:px-8 py-12 w-full flex flex-col items-center justify-center min-h-[50vh]">
+        <div className="bg-surface-container-low p-12 rounded-3xl border border-primary/20 shadow-xl flex flex-col items-center text-center max-w-lg">
+          <div className="w-20 h-20 bg-primary/10 text-primary rounded-full flex items-center justify-center mb-6">
+            <CheckCircle className="w-10 h-10" />
+          </div>
+          <h1 className="text-3xl font-extrabold text-on-surface mb-4">¡Pago Exitoso!</h1>
+          <p className="text-on-surface-variant text-lg mb-8">
+            Tu pago ha sido procesado correctamente. En breve prepararemos tu pedido.
+          </p>
+          <Link 
+            href="/"
+            className="px-8 py-4 bg-primary text-on-primary font-bold rounded-xl shadow-lg hover:-translate-y-1 hover:shadow-primary/30 transition-all"
+          >
+            Volver a la tienda
+          </Link>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="grow max-w-7xl mx-auto px-4 sm:px-8 py-12 w-full">

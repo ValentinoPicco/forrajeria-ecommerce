@@ -2,7 +2,8 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "../api/auth/[...nextauth]/route";
 import { redirect } from "next/navigation";
 import Header from "../components/Header";
-import { LayoutDashboard, Package, Receipt, Truck, Settings, LogOut } from 'lucide-react';
+import { prisma } from "@/lib/prisma";
+import AdminSidebarNav from "./components/AdminSidebarNav";
 
 export default async function AdminLayout({
     children,
@@ -28,6 +29,15 @@ export default async function AdminLayout({
     }
 
     // 3. Si es ADMIN, le mostramos el contenido (children)
+    // Consultar pedidos pendientes de entrega
+    const undeliveredOrdersCount = await prisma.order.count({
+        where: {
+            status: {
+                in: ['PAID', 'SHIPPED']
+            }
+        }
+    });
+
     return (
         <div className="bg-surface text-on-surface min-h-screen flex flex-col font-sans">
             <Header />
@@ -44,20 +54,7 @@ export default async function AdminLayout({
                         />
                     </div>
 
-                    <nav className="flex-1">
-                        <a className="flex items-center gap-3 bg-primary-container text-on-primary-container rounded-r-full py-3 px-6 my-1 active:opacity-80" href="#">
-                            <Package className="w-5 h-5" />
-                            <span className="text-sm font-medium">Inventario</span>
-                        </a>
-                        <a className="flex items-center gap-3 text-on-surface-variant py-3 px-6 my-1 hover:bg-primary-container/10 transition-all duration-200 hover:translate-x-1" href="#">
-                            <Receipt className="w-5 h-5" />
-                            <span className="text-sm font-medium">Pedidos</span>
-                        </a>
-                        <a className="flex items-center gap-3 text-on-surface-variant py-3 px-6 my-1 hover:bg-primary-container/10 transition-all duration-200 hover:translate-x-1" href="#">
-                            <Settings className="w-5 h-5" />
-                            <span className="text-sm font-medium">Configuración</span>
-                        </a>
-                    </nav>
+                    <AdminSidebarNav undeliveredOrdersCount={undeliveredOrdersCount} />
 
                 </aside>
 

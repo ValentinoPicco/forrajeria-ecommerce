@@ -1,8 +1,15 @@
 import { NextResponse } from 'next/server';
 import { MercadoPagoConfig, Preference } from 'mercadopago';
-
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+import { prisma } from '@/lib/prisma';
 export async function POST(req: Request) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Debes iniciar sesión para comprar' }, { status: 401 });
+    }
+
     const { items } = await req.json();
 
     if (!items || items.length === 0) {
@@ -16,6 +23,32 @@ export async function POST(req: Request) {
 
     const client = new MercadoPagoConfig({ accessToken: token });
     const preference = new Preference(client);
+
+    // Calcular el total de la orden
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let totalOrder = 0;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const orderItemsData = items.map((item: any) => {
+      const price = Number(item.variant.price);
+      totalOrder += price * item.quantity;
+      return {
+        variantId: item.variant.id,
+        quantity: item.quantity,
+        price: price
+      };
+    });
+
+    // Crear la orden en estado PENDING
+    const order = await prisma.order.create({
+      data: {
+        userId: session.user.id,
+        total: totalOrder,
+        status: "PENDING",
+        items: {
+          create: orderItemsData
+        }
+      }
+    });
 
     // Mapear los items del carrito al formato de Mercado Pago
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -38,6 +71,8 @@ export async function POST(req: Request) {
           pending: `${baseUrl}/carrito?status=pending`,
         },
         auto_return: 'approved',
+        external_reference: order.id,
+        notification_url: `${baseUrl}/api/webhooks/mercadopago`,
       }
     });
 

@@ -37,6 +37,7 @@ interface CartContextType {
   addToCart: (variantId: string, quantity?: number) => Promise<boolean>;
   updateQuantity: (itemId: string, quantity: number) => Promise<boolean>;
   removeItem: (itemId: string) => Promise<boolean>;
+  clearCartLocal: () => void;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -143,6 +144,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const clearCartLocal = () => {
+    setCart(null);
+  };
+
   const totalItems = cart?.items.reduce((acc, item) => acc + item.quantity, 0) || 0;
   const subtotal = cart?.items.reduce((acc, item) => acc + (Number(item.variant.price) * item.quantity), 0) || 0;
 
@@ -155,7 +160,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
       refreshCart,
       addToCart,
       updateQuantity,
-      removeItem
+      removeItem,
+      clearCartLocal
     }}>
       {children}
     </CartContext.Provider>
