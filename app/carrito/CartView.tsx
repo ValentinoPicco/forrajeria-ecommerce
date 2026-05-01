@@ -5,18 +5,43 @@ import { Trash2, Plus, Minus, ShoppingBag } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 export default function CartView() {
   const { status } = useSession();
   const router = useRouter();
   const { cart, isLoading, updateQuantity, removeItem, subtotal, totalItems } = useCart();
+  const [isCheckingOut, setIsCheckingOut] = useState(false);
 
   useEffect(() => {
     if (status === "unauthenticated") {
       router.push("/");
     }
   }, [status, router]);
+
+  const handleCheckout = async () => {
+    try {
+      setIsCheckingOut(true);
+      const response = await fetch('/api/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items: cart?.items || [] })
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.init_point) {
+        window.location.href = data.init_point;
+      } else {
+        alert(data.error || 'Error al iniciar el pago');
+        setIsCheckingOut(false);
+      }
+    } catch (error) {
+      console.error('Checkout error:', error);
+      alert('Error de conexión al iniciar el pago');
+      setIsCheckingOut(false);
+    }
+  };
 
   if (status !== "authenticated" || isLoading) {
     return (
@@ -138,8 +163,19 @@ export default function CartView() {
               <span className="text-2xl font-black text-primary">${subtotal.toFixed(2)}</span>
             </div>
             
-            <button className="w-full py-4 bg-primary text-on-primary font-bold rounded-xl shadow-lg shadow-primary/20 hover:bg-primary/90 transition-all hover:-translate-y-1 mt-2">
-              Iniciar Pago
+            <button 
+              onClick={handleCheckout}
+              disabled={isCheckingOut || items.length === 0}
+              className="w-full py-4 bg-primary text-on-primary font-bold rounded-xl shadow-lg shadow-primary/20 hover:bg-primary/90 transition-all hover:-translate-y-1 mt-2 disabled:opacity-50 disabled:hover:translate-y-0 disabled:cursor-not-allowed flex justify-center items-center gap-2"
+            >
+              {isCheckingOut ? (
+                <>
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-on-primary"></div>
+                  Procesando...
+                </>
+              ) : (
+                'Iniciar Pago'
+              )}
             </button>
           </div>
           
